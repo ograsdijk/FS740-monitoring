@@ -1,0 +1,52 @@
+# What to track
+
+=== TIMEBASE ===
+- current state TBASe:STATe?
+- maybe duration
+  - TBASe:STATe:HOLDover:DUration?
+  - TBASe:STATe:LOCK:DURation?
+  - TBASe:STATe:WARMup:DURation?
+- maybe installed timebase
+- frequency control voltage TBASe:FCONtrol
+- maybe gps lock config TBASe:CONFig:LOCK
+- loop bandwidth TBASe:CONFig:BWIDth
+- loop time constant TBASe:TCONstant
+- time interval TBASe:TINTerval
+- criteria to enter holdover TBASe:CONFig:TINTerval:LIMit
+- criteria to leave holdover TBASe:CONFig:HMODe
+
+=== GPS ===
+- GPS date SYSTem:DATe
+- GPS time SYSTem:TIMe
+- GPS position GPS:POSition
+- maybe GPS survey state & progress but not really necessary
+- GPS satellites tracked
+  - GPS:SATellite:TRACking
+  - GPS:SATellite:TRACking:STATus
+- GPS reciever status
+  - STATus:GPS:CONDition
+  - STATus:GPS:EVENt -> maybe to logs
+- timing alignment (UTC or otherwise)
+  - GPS:CONFig:ALIGnment
+  - GPS:UTC:OFFSet
+- timing quality GPS:CONFig:QUALity
+- maybe survey mode
+  - GPS:CONFig:SURVey:Mode
+  - GPS:CONFig:SURVey:FIXes
+- antenna delay correction GPS:CONFig:ADELay
+
+=== COMMUNICATION ===
+- maybe system errors SYSTem:ERRor
+- IP & MAC address if applicable
+  - SYSTem:COMMunicate:LAN:MAC
+  - SYSTem:COMMunicate:LAN:IPADress
+  - SYSTem:COMMunicate:LAN:GATeway
+
+=== SYSTEM ===
+- device info
+  - *IDN?
+  - *OPT?
+
+
+=== Logging ==
+- timebase events
