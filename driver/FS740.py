@@ -1,7 +1,7 @@
 import visa
 
 class FS740:
-    def __init__(self, resource_manager, resource_name, protocol):
+    def __init__(self, resource_manager, resource_name, protocol = 'RS232'):
         self.rm = resource_manager
         if protocol == 'RS232':
             self.instr = self.rm.open_resource(resource_name)
