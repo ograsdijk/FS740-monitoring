@@ -471,13 +471,9 @@ class FS740:
     #################################################################
     """
     Not implemented:
-        GPS:CONFig:MODe
         GPS:CONFig:SAVe
         GPS:CONFig:SURVey:Mode
         GPS:CONFig:SURVey:FIXes
-        GPS:CONFig:ALIGnment
-        GPS:CONFig:QUALity
-        GPS:CONFig:ADELay
         GPS:POSition:SURVey:DELete
         GPS:POSition:SURVey:PROGress
         GPS:POSition:SURVey:SAVe
@@ -485,7 +481,42 @@ class FS740:
         GPS:POSition:SURVey:STATe
         GPS:UTC:OFFSet
     """
-    def GPSConfigMode(self):
+    def GPSConfigAlignment(self, alignment):
+        """
+            GPS:CONFig[:TIMing]:ALIGnment [{GPS|UTC}]
+            GPS:CONFig[:TIMing]:ALIGnment?
+        The first definition sets the GPS 1pps alignment. If alignment is
+        omitted, the default alignment is UTC. The second definition queries the
+        current GPS 1pps alignment. When GPS is selected, all timing is aligned
+        to GPS. When UTC is selected, all timing is aligned to UTC. The user
+        must execute the command GPS:CONF:SAVE to save the current value to
+        nonvolatile memory.
+        Manual p.105
+        """
+        sel.set("GPS:CONF:ALIG "+alignment)
+
+    def ReadGPSConfigAlignment(self):
+        return self.query("GPS:CONF:ALIG?")
+
+    def GPSConfigMode(self, mode):
+        """
+            GPS:CONFig:MODe <anti-jamming>, <elevation mask>, <signal mask>
+            GPS:CONFig:MODe?
+        The first definition enables the user to set anti-jamming mode, the
+        elevation mask and the signal mask. The second definition queries the
+        current values for these parameters. <Anti-jamming> is a Boolean value
+        which enables or disables anti-jamming in the receiver. The factory
+        default is enabled. <Elevation mask> is the elevation angle in radians,
+        below which satellites are ignored in over determined clock mode.
+        It can range from 0 to π/2. <Signal mask> is the minimum signal level in
+        dbHz, below which satellites are ignored in over determined clock mode.
+        It can range from 0 to 55 dBHz. The default value for both masks is 0.
+        The user must execute the command GPS:CONF:SAVE to save the current
+        values to nonvolatile memoryself.
+        """
+        self.set("GPS:CONF:MOD "+mode)
+
+    def ReadGPSConfigMode(self):
         """
         Query the GPS Config Mode.
         Returns anti-jamming, elevation mask and signal mask:
@@ -495,7 +526,42 @@ class FS740:
          - signal mask is the minimum signal level in dbHz below which satellites
            are ignored in over determined clock mode
         """
-        return self.query("GPS:CON:MOD?")
+        return self.query("GPS:CONF:MOD?")
+
+    def GPSConfigQuality(self, option = '3SAT'):
+        """
+            GPS:CONFig[:TIMing]:QUALity [{1SAT|3SAT}]
+            GPS:CONFig[:TIMing]:QUALity?
+        The first definition sets the minimum number of satellites the receiver
+        must track before outputting a hardware 1pps pulse. If omitted, the
+        default quality is 3 satellites. The second definition queries the
+        current timing quality. Timing quality generally increases as the number
+        of satellites increases. However, the user must also consider
+        reliability and holdover performance. Degraded performance may be
+        preferred over no timing whatsoever. The user must execute the command
+        GPS:CONF:SAVE to save the current value to nonvolatile memory.
+        """
+        self.set("GPS:CONF:QUAL "+option)
+
+    def ReadGPSConfigQuality(self):
+        return self.query("GPS:CONF:QUAL?")
+
+    def GPSConfigADelay(self, delay):
+        """
+            GPS:CONFig[:TIMing]:ADELay <delay>
+            GPS:CONFig[:TIMing]:ADELay?
+        The first definition sets the antenna delay to <delay> in seconds. The
+        second definition queries the current antenna delay in seconds. The
+        <delay> may range from −0.1 s to +0.1 s. Note that the user should
+        enter a negative number here to compensate for the length of their
+        antenna cable. It affects the timing of all inputs and outputs. The
+        user must execute the command GPS:CONF:SAVE to save the current value
+        to nonvolatile memory.
+        """
+        self.set("GPS:CONF:ADEL "+delay)
+
+    def ReadGPSConfigADelay(self):
+        return self.query("GPS:CONF:ADEL?")
 
     def GPSPosition(self):
         """
@@ -1307,15 +1373,80 @@ class FS740:
 
     """
     Not implemented:
-        TBASe:CONFig:BWIDth
-        TBASe:CONFig:HMODe
-        TBASe:CONFig:LOCK
         TBASe:CONFig:TINTerval:LIMit
         TBASe:EVENt:CLEar
-        TBASe:FCONtrol
         TBASe:FCONtrol:SAVe
         TBASe:TCONstant
     """
+    def TBaseConfigBWidth(self, bwidth):
+        """
+            TBASe:CONFig:BWIDth [{AUTo|MANual}]
+            TBASe:CONFig:BWIDth?
+        The first definition sets the desired bandwidth control. The second
+        definition queries the current value for bandwidth control. When AUTo is
+        selected, the bandwidth with which the timebase follows GPS is
+        automatically adjusted based on the measured timing errors. When the
+        timing error is large bandwidth is increased. Conversely, when timing
+        errors are small bandwidth is decreased. When MANual is selected, the
+        bandwidth is fixed and the time constant of the phase lock loop is
+        governed by the value set with the TBASe:TCONstant command. When the
+        parameter is omitted, the value is assumed to be AUTo.
+        """
+        self.set("TBAS:CONF:BWID "+bwidth)
+
+    def ReadTBaseConfigBWidth(self):
+        return self.query("TBAS:CONF:BWID?")
+
+    def TBaseConfigHMode(self, mode):
+        """
+            TBASe:CONFig:HMODe [{WAIT|JUMP|SLEW}]
+            TBASe:CONFig:HMODe?
+        The first definition controls how the timebase leaves holdover mode when
+        timing offsets are larger than allowed. The second definition queries
+        the current behavior for leaving holdover mode. When WAIT is selected,
+        the timebase will wait for the timing offsets to improve before leaving
+        holdover mode. If JUMP is selected, the timebase will leave holdover by
+        jumping from its current phase to that of GPS to correct the offset
+        immediately. If SLEW is selected the timebase will leave holdover by
+        slewing its phase from its current value to that of GPS to correct the
+        offset.
+        """
+        self.set("TBAS:CONF:HMOD "+mode)
+
+    def ReadTBaseConfigHMode(self):
+        return self.query("TBAS:CONF:HMOD?")
+
+    def TBaseConfigLock(self, option):
+        """
+            TBASe:CONFig:LOCK [{1|ON|0|OFF}]
+            TBASe:CONFig:LOCK?
+        The first definition controls whether the timebase locks to GPS or not.
+        When set to 1 or ON, the timebase will lock to GPS if it is generating
+        timing pulses. When set to 0 or OFF, the timebase will not lock to GPS.
+        If the parameter is omitted, it is assumed to be ON. The second
+        definition queries the current setting.
+        """
+        self.set("TBAS:CONF:LOCK "+option)
+
+    def ReadTBaseConfigLock(self):
+        return self.query("TBAS:CONF:LOCK?")
+
+    def TBaseFControl(self, fc):
+        """
+            TBASe:FCONtrol <fc>
+            TBASe:FCONtrol?
+        The first definition sets the frequency control value for the timebase
+        to <fc>. The second definition returns the current frequency control
+        value. Valid values may range from 0 to 4.096. Error −221,
+        “Settings conflict,” is generated if the user tries to manually set the
+        frequency control value when the timebase is locked to GPS. This setting
+        is not automatically saved to nonvolatile memory. It must be explicitly
+        saved with the TBASe:FCONtrol:SAVe command if desired.
+        """
+        self.set("TBAS:FCON "+fc)
+
+    def ReadTBaseFControl(self):
+        return self.query("TBAS:FCON?")
 
     def TBaseEventNext(self):
         """
@@ -1358,7 +1489,7 @@ class FS740:
 
     def TBaseStateHoldoverDuration(self):
         """
-        Query the length of time in secondsthe FS740 has been in
+        Query the length of time in seconds the FS740 has been in
         holdover.
         Manual p.136
         """
@@ -1380,7 +1511,27 @@ class FS740:
         """
         return self.query("TBAS:WARM?")
 
-    def TBaseTConstant(self, loop_time_constant = 'CURR'):
+    def TBaseTConstant(self, tconstant):
+        """
+            TBASe:TCONstant <time constant>
+            TBASe:TCONstant? [{CURRent|TARGet|MANual}]
+        The first definition sets the time constant for the phase lock loop that
+        locks the timebase to GPS when MANual is selected for the command
+        TBASe:CONFig:BWIDth. The second definition queries one of three
+        different time constants: the current time constant, the target time
+        constant, and the manual time constant set with the first definition
+        above. If the parameter is omitted, the current time constant is
+        returned. If the timebase is configured for automatic bandwidth control
+        (the default), the current time constant may vary from 3 s up to the
+        target time constant for the installed timebase. The target time
+        constant is a factory setting which identifies the optimum time constant
+        for the installed timebase that should be used when the timebase has
+        fully stabilized and timing errors are small.
+        Manual p.136
+        """
+        self.set("TBAS:TCON "+tconstant)
+
+    def ReadTBaseTConstant(self, loop_time_constant = 'CURR'):
         """
         Query the the loop time constant; either CURRent, TARGet or MANual.
         Manual p.136
@@ -1388,6 +1539,22 @@ class FS740:
         assert loop_time_constant in ['CURR', 'TARG', 'MAN'], \
         'loopt TC invalid parameter value'
         return self.query("TBAS:TCON? {0}".format(loop_time_constant))
+
+    def TBaseConfigTIntervalLimit(self, tintlimit):
+        """
+            TBASe:CONFig[:TINTerval]:LIMit <time error>
+            TBASe:CONFig[:TINTerval]:LIMit?
+        The first definition sets the limit for timing errors to <time error> in
+        seconds. The second definition queries the current limit. The
+        <time error> may range from 50 ns to 1.0 s. The factory default value is
+        1 μs. When the measured timing error of the timebase relative to GPS
+        exceeds this limit, the timebase will unlock from GPS and enter
+        holdover.
+        """
+        self.set("TBAS:CONF:TINT:LIM "+tintlimit)
+
+    def ReadTBaseConfigTIntervalLimit(self):
+        return self.query("TBAS:CONF:TINT:LIM?")
 
     def TBaseTInterval(self, average = False):
         """
