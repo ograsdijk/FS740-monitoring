@@ -1,4 +1,5 @@
 import visa
+import datetime as dt
 
 class FS740:
     def __init__(self, resource_manager, resource_name, protocol = 'RS232'):
@@ -27,10 +28,110 @@ class FS740:
     def set(self, cmd):
         self.instr.write(cmd)
 
-    def ReadValue(self, ):
-        return
+    def ReadValue(self, full_output = False):
+        date = self.ReadSystemDate()
+        time =  self.ReadSystemTime()
+        time_alig = self.ReadGPSConfigAlignment()
+        tbase_state = self.TBaseState()
+        tbase_hold_dur = int(self.TBaseStateHoldoverDuration())
+        tbase_warm_dur = int(self.TBaseStateWarumpDuration())
+        tbase_lock_dur = int(self.TBaseStateLockDuration())
+        fcontrol = float(self.ReadTBaseFControl())
+        hmode = self.ReadTBaseConfigHMode()
+        bwidth = self.ReadTBaseConfigBWidth()
+        lock = bool(self.ReadTBaseConfigLock())
+        tint_lim = float(self.ReadTBaseConfigTIntervalLimit())
+        tint = float(self.TBaseTInterval())
+        tint_avg = float(self.TBaseTInterval(average = True))
+        tconstant_cur = int(self.ReadTBaseTConstant())
+        tconstant_tar = int(self.ReadTBaseTConstant("TARG"))
+        gps_pos = self.GPSPosition()
+        gps_track = self.GPSSatelliteTracking()
+        gps_track_state = self.GPSSatelliteTrackingStatus()
+        gps_mode = self.ReadGPSConfigMode()
+        gps_qual = self.ReadGPSConfigQuality()
+        gps_adelay = float(self.ReadGPSConfigADelay())
+        values = (date, time, time_alig, tbase_state, tbase_hold_dur,
+                  tbase_warm_dur, tbase_lock_dur, fcontrol, hmode, bwidth, lock,
+                  tint_lim, tint, tint_avg, tconstant_cur, tconstant_tar, gps_pos,
+                  gps_mode, gps_qual, gps_adelay, gps_track, gps_track_state)
+        desc = ('SystemDate', 'SystemTime', 'GPSAlignment', 'TBaseState',
+                'TBaseHoldDuration', 'TBaseWarmDuration', 'TBaseLockDuration',
+                'TBaseFControl', 'TBaseHMode', 'TBaseBWidth', 'TBaseLock',
+                'TBaseTIntervalLimit', 'TBaseTInterval', 'TBaseTIntervalAverage',
+                'TBaseTConstantCurrent', 'TBaseTConstantTarget', 'GPSPosition',
+                'GPSMode', 'GPSQuality', 'GPSADelay', 'GPSSatelliteTracking',
+                'GPSSatelliteTrackingStatus')
+        if full_output:
+            return values, desc
+        else:
+            return values
 
-    def VerifyOperation(self, ):
+    @staticmethod
+    def ExpandValue(values, desc, label, conv, labels):
+        idx = desc.index(label)
+        val = values[idx].split(',')
+        val = [c(v) for c,v in zip(conv,val)]
+        values = list(values)
+        del values[idx]
+        values[idx:idx] = val
+        desc = list(desc)
+        del desc[idx]
+        desc[idx:idx] = labels
+        return values, desc
+
+    @staticmethod
+    def chunks(l,n):
+        lst = []
+        for i in range(0, len(l), n):
+            lst.append(l[i:i+n])
+        return lst
+
+    def WriteValueINFLUXDB(self, connection, table):
+        tableO, tableS = table.split(',')
+        values, descs = self.ReadValue(full_output = True)
+
+        s = values[1].split('.')
+        time = dt.datetime.strptime(values[0]+' '+s[0]+'.'+s[1][:6],
+                                    '%Y,%m,%d %H,%M,%S.%f').isoformat()
+
+        values, descs = self.ExpandValue(values, descs, 'GPSMode',
+                                         (bool, float, float), ('antiJamming',
+                                         'elevationMask','signalMask'))
+        values, descs = self.ExpandValue(values, descs, 'GPSPosition',
+                                         (float, float, float),
+                                         ('latitude', 'longitude', 'altitude'))
+
+        idx = descs.index('GPSSatelliteTrackingStatus')
+        sats = self.chunks(values[idx].split(','), 8)
+        ids, signal, elevation, azimuth = \
+        zip(*[(int(val[0]), int(val[4]), int(val[5]), int(val[6]))
+              for val in sats if (val[3] =='0') and (val[0] != '0')])
+
+        values = values[2:-2]
+        descs = descs[2:-2]
+        values.append(len(ids))
+        descs.append("satelitesConnected")
+        values.append(round(sum(signal)/len(signal),1))
+        descs.append('SNR')
+
+        writeO = {"measurement":tableO,
+                 "tags": {'clock_id':'FS740'},
+                 "time":time,
+                 "fields":dict((key,value) for key,value in
+                               zip(descs,values))}
+
+        writeS = [{"measurement":tableS,
+                  "tags":{'satelliteID':id},
+                  "time":time,
+                  "fields":{"signal":sig,
+                            "elevation":ele,
+                            "azimuth":azi}} for id, sig, ele, azi in \
+                  zip(ids, signal, elevation, azimuth)]
+        connection.write_points([writeO])
+        connection.write_points(writeS)
+
+    def VerifyOperation(self):
         return self.ReadIDN().split(',')[1]
 
     #################################################################

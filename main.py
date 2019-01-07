@@ -3,12 +3,13 @@ from tkinter import filedialog
 from tkinter import messagebox
 import os
 import glob
-# import pyvisa
+import pyvisa
 import sys
 import configparser
 import time
 import numpy as np
 import shutil, errno
+import visa
 import atexit
 import threading
 import inspect
@@ -27,7 +28,7 @@ def get_connection(*args, **kwargs):
         connection.close()
 
 class RecorderINFLUXDB(threading.Thread):
-    def __init__(self, host, port, database, table, user, password, influxdb_insert,
+    def __init__(self, host, port, database, table, user, password,
                  driver, dt, driver_kwargs):
         # thread control
         threading.Thread.__init__(self)
@@ -40,9 +41,10 @@ class RecorderINFLUXDB(threading.Thread):
         self.table = table
         self.user = user
         self.password = password
-        self.influxdb_insert = influxdb_insert
         self.driver = driver
         self.dt = dt
+        if 'resource_manager' in driver_kwargs:
+            driver_kwargs['resource_manager'] = visa.ResourceManager()
         self.driver_kwargs = driver_kwargs
 
         with self.driver(**driver_kwargs) as device:
@@ -178,7 +180,7 @@ class RecorderINFLUXDBGUI(tk.Frame):
             kwargs_recorder = OrderedDict({arg: d[arg].get() for arg in driver_args})
             if d["enabled"].get():
                 d["recorder"] = RecorderINFLUXDB(host, port, database, d["table"], user,
-                                         password, d["influxdb_insert"],
+                                         password,
                                          d["driver"], float(d['dt'].get()),
                                          kwargs_recorder)
                 if d["recorder"].verify != d["correct_response"]:
@@ -207,10 +209,10 @@ class RecorderINFLUXDBGUI(tk.Frame):
         self.status = "stopped"
         self.status_message.set("Recording finished")
 
-class CentrexEnvironmentalGUI(tk.Frame):
+class CentrexClockGUI(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.winfo_toplevel().title("CeNTREX Environmental DAQ")
+        self.winfo_toplevel().title("CeNTREX Clock DAQ")
         self.parent = parent
         atexit.register(self.save_config)
 
@@ -234,7 +236,6 @@ class CentrexEnvironmentalGUI(tk.Frame):
                         ("label"             , devices[d]["label"]),
                         ("driver"            , eval(devices[d]["driver"])),
                         ("table"             , devices[d]["table"]),
-                        ("influxdb_insert"        , devices[d]["influxdb_insert"]),
                         ("dt"                , tk.StringVar()),
                         ("enabled"           , tk.IntVar()),
                         ("correct_response"  , devices[d]["correct_response"]),
@@ -273,7 +274,6 @@ class CentrexEnvironmentalGUI(tk.Frame):
                         ("label"             , self.devices[d]["label"]),
                         ("driver"            , self.devices[d]["driver"].__name__),
                         ("table"             , self.devices[d]["table"]),
-                        ("influxdb_insert"        , self.devices[d]["influxdb_insert"]),
                         ("dt"                , self.devices[d]["dt"].get()),
                         ("enabled"           , self.devices[d]["enabled"].get()),
                         ("correct_response"  , self.devices[d]["correct_response"]),
@@ -284,5 +284,5 @@ class CentrexEnvironmentalGUI(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    CentrexEnvironmentalGUI(root).pack(side="top", fill="both", expand=True)
+    CentrexClockGUI(root).pack(side="top", fill="both", expand=True)
     root.mainloop()
