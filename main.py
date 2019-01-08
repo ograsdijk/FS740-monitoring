@@ -212,7 +212,7 @@ class RecorderINFLUXDBGUI(tk.Frame):
 class CentrexClockGUI(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.winfo_toplevel().title("CeNTREX Clock DAQ")
+        self.winfo_toplevel().title("CeNTREX Clock Monitoring")
         self.parent = parent
         atexit.register(self.save_config)
 

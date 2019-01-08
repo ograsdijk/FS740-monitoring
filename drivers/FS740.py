@@ -88,7 +88,7 @@ class FS740:
         return lst
 
     def WriteValueINFLUXDB(self, connection, table):
-        tableO, tableS = table.split(',')
+        tableO, tableS, tableL = table.split(',')
         values, descs = self.ReadValue(full_output = True)
 
         s = values[1].split('.')
@@ -128,8 +128,21 @@ class FS740:
                             "elevation":ele,
                             "azimuth":azi}} for id, sig, ele, azi in \
                   zip(ids, signal, elevation, azimuth)]
+
+        writeL = []
+        while int(self.TBaseEventCount()) > 0:
+            event = self.TBaseEventNext().split(',')
+            msg = event[0]
+            ts = ','.join(event[1:])
+            ts = dt.datetime.strptime(ts,"%Y,%m,%d,%H,%M,%S").isoformat()
+            writeL.append({"measurement":tableL,
+                           "tags":{"deviceID":'FS740', "label":"event"},
+                           "time":ts, "fields":{"message":msg}})
+
         connection.write_points([writeO])
         connection.write_points(writeS)
+        if len(writeL) > 0:
+            connection.write_points(writeL)
 
     def VerifyOperation(self):
         return self.ReadIDN().split(',')[1]
@@ -1548,6 +1561,14 @@ class FS740:
 
     def ReadTBaseFControl(self):
         return self.query("TBAS:FCON?")
+
+    def TBaseEventCount(self):
+        """
+        Query the number of events in the timebase event queue.
+        Manual p.134
+        """
+        return self.query("TBAS:EVEN:COUN?")
+
 
     def TBaseEventNext(self):
         """
