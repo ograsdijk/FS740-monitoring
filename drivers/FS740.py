@@ -554,7 +554,7 @@ class FS740:
         in internal memory.
         Manual p.102
         """
-        return self.query("DATA{0}:POIN?".format(1 if front else 2))
+        return int(self.query("DATA{0}:POIN?".format(1 if front else 2)))
 
     def DataRead(self, index, count, front = True):
         """
